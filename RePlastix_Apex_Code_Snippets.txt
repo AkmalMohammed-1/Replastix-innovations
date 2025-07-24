@@ -1,0 +1,175 @@
+1. Apex Class: InventoryManager
+
+public class InventoryManager {
+
+    public static void processOrderStock(List<Re_Plastic_Innovations_Order__c> orderList) {
+        Set<Id> productIds = new Set<Id>();
+        for (Re_Plastic_Innovations_Order__c order : orderList) {
+            productIds.add(order.Recycled_Product__c);
+        }
+
+        Map<Id, Re_Plastic_Innovations_Recycled_Product__c> productMap = new Map<Id, Re_Plastic_Innovations_Recycled_Product__c>(
+            [SELECT Id, Stock_Level__c, Threshold__c FROM Re_Plastic_Innovations_Recycled_Product__c WHERE Id IN :productIds]
+        );
+
+        List<Re_Plastic_Innovations_Recycled_Product__c> productsToUpdate = new List<Re_Plastic_Innovations_Recycled_Product__c>();
+        List<Re_Plastic_Innovations_Restock_Request__c> restockRequests = new List<Re_Plastic_Innovations_Restock_Request__c>();
+
+        for (Re_Plastic_Innovations_Order__c order : orderList) {
+            Re_Plastic_Innovations_Recycled_Product__c product = productMap.get(order.Recycled_Product__c);
+            if (product != null) {
+                if (product.Stock_Level__c >= order.Quantity__c) {
+                    product.Stock_Level__c -= order.Quantity__c;
+                    productsToUpdate.add(product);
+                } else {
+                    restockRequests.add(new Re_Plastic_Innovations_Restock_Request__c(
+                        Product__c = product.Id,
+                        Requested_Quantity__c = order.Quantity__c - product.Stock_Level__c,
+                        Status__c = 'Pending'
+                    ));
+                }
+            }
+        }
+
+        if (!productsToUpdate.isEmpty()) {
+            update productsToUpdate;
+        }
+
+        if (!restockRequests.isEmpty()) {
+            insert restockRequests;
+        }
+    }
+
+    public static void processRestockApproval(List<Re_Plastic_Innovations_Restock_Request__c> restockList) {
+        Set<Id> productIds = new Set<Id>();
+        for (Re_Plastic_Innovations_Restock_Request__c restock : restockList) {
+            if (restock.Status__c == 'Approved') {
+                productIds.add(restock.Product__c);
+            }
+        }
+
+        Map<Id, Re_Plastic_Innovations_Recycled_Product__c> productMap = new Map<Id, Re_Plastic_Innovations_Recycled_Product__c>(
+            [SELECT Id, Stock_Level__c FROM Re_Plastic_Innovations_Recycled_Product__c WHERE Id IN :productIds]
+        );
+
+        List<Re_Plastic_Innovations_Recycled_Product__c> productsToUpdate = new List<Re_Plastic_Innovations_Recycled_Product__c>();
+
+        for (Re_Plastic_Innovations_Restock_Request__c restock : restockList) {
+            if (productMap.containsKey(restock.Product__c)) {
+                Re_Plastic_Innovations_Recycled_Product__c product = productMap.get(restock.Product__c);
+                product.Stock_Level__c += restock.Requested_Quantity__c;
+                productsToUpdate.add(product);
+            }
+        }
+
+        if (!productsToUpdate.isEmpty()) {
+            update productsToUpdate;
+        }
+    }
+}
+
+
+2. Apex Trigger: UpdateStockAfterOrder
+
+trigger UpdateStockAfterOrder on Re_Plastic_Innovations_Order__c (after insert) {
+    if (Trigger.isAfter && Trigger.isInsert) {
+        InventoryManager.processOrderStock(Trigger.new);
+    }
+}
+
+
+3. Apex Trigger: UpdateStockAfterRestockApproval
+
+trigger UpdateStockAfterRestockApproval on Re_Plastic_Innovations_Restock_Request__c (after update) {
+    List<Re_Plastic_Innovations_Restock_Request__c> approvedRestocks = new List<Re_Plastic_Innovations_Restock_Request__c>();
+    for (Re_Plastic_Innovations_Restock_Request__c restock : Trigger.new) {
+        if (restock.Status__c == 'Approved' &&
+            Trigger.oldMap.get(restock.Id).Status__c != 'Approved') {
+            approvedRestocks.add(restock);
+        }
+    }
+    if (!approvedRestocks.isEmpty()) {
+        InventoryManager.processRestockApproval(approvedRestocks);
+    }
+}
+
+
+4. Apex Class: EmailNotificationHelper
+
+public class EmailNotificationHelper {
+    public static void sendRestockNotification(List<Re_Plastic_Innovations_Restock_Request__c> restockRequests) {
+        List<Messaging.SingleEmailMessage> emails = new List<Messaging.SingleEmailMessage>();
+        for (Re_Plastic_Innovations_Restock_Request__c restock : restockRequests) {
+            Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+            email.setSubject('Restock Request Approved');
+            email.setToAddresses(new List<String>{'mabdulrahaman066@gmail.com'});
+            email.setPlainTextBody(
+                'The restock request for product ' + restock.Product__c + ' has been approved. Please proceed with stock update.'
+            );
+            emails.add(email);
+        }
+        if (!emails.isEmpty()) {
+            Messaging.sendEmail(emails);
+        }
+    }
+}
+
+
+5. Apex Test Class: InventoryManagerTest
+
+@isTest
+public class InventoryManagerTest {
+    @testSetup
+    static void setupTestData() {
+        Re_Plastic_Innovations_Recycled_Product__c product = new Re_Plastic_Innovations_Recycled_Product__c(
+            Stock_Level__c = 50,
+            Threshold__c = 10
+        );
+        insert product;
+
+        List<Re_Plastic_Innovations_Order__c> orders = new List<Re_Plastic_Innovations_Order__c>{
+            new Re_Plastic_Innovations_Order__c(Recycled_Product__c = product.Id, Quantity__c = 20),
+            new Re_Plastic_Innovations_Order__c(Recycled_Product__c = product.Id, Quantity__c = 40)
+        };
+        insert orders;
+    }
+
+    @isTest
+    static void testProcessOrderStock() {
+        List<Re_Plastic_Innovations_Order__c> orders = [SELECT Id, Recycled_Product__c, Quantity__c FROM Re_Plastic_Innovations_Order__c];
+
+        Test.startTest();
+        InventoryManager.processOrderStock(orders);
+        Test.stopTest();
+
+        Re_Plastic_Innovations_Recycled_Product__c product = [SELECT Stock_Level__c FROM Re_Plastic_Innovations_Recycled_Product__c];
+        System.assertEquals(10, product.Stock_Level__c);
+
+        List<Re_Plastic_Innovations_Restock_Request__c> restockRequests = [SELECT Id FROM Re_Plastic_Innovations_Restock_Request__c WHERE Status__c = 'Pending'];
+        System.assertEquals(2, restockRequests.size());
+    }
+
+    @isTest
+    static void testProcessRestockApproval() {
+        List<Re_Plastic_Innovations_Restock_Request__c> restocks = [SELECT Id, Product__c, Requested_Quantity__c FROM Re_Plastic_Innovations_Restock_Request__c];
+        for (Re_Plastic_Innovations_Restock_Request__c req : restocks) {
+            req.Status__c = 'Approved';
+        }
+        update restocks;
+
+        Decimal totalRestockQuantity = 0;
+        for (Re_Plastic_Innovations_Restock_Request__c req : restocks) {
+            totalRestockQuantity += req.Requested_Quantity__c;
+        }
+
+        Re_Plastic_Innovations_Recycled_Product__c productBefore = [SELECT Stock_Level__c FROM Re_Plastic_Innovations_Recycled_Product__c];
+        Decimal initialStock = productBefore.Stock_Level__c;
+
+        Test.startTest();
+        InventoryManager.processRestockApproval(restocks);
+        Test.stopTest();
+
+        Re_Plastic_Innovations_Recycled_Product__c productAfter = [SELECT Stock_Level__c FROM Re_Plastic_Innovations_Recycled_Product__c];
+        System.assertEquals(initialStock + totalRestockQuantity, productAfter.Stock_Level__c);
+    }
+}
