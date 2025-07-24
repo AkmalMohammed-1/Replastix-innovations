@@ -1,38 +1,99 @@
-♻️ RePlastix Innovations: Salesforce CRM for Sustainable Plastic Waste Management
-This project showcases a full-fledged Salesforce CRM solution built for RePlastix Innovations, a pioneering organization focused on plastic waste collection, recycling, and sustainable product distribution. The system streamlines operational workflows and automates key business processes using Custom Objects, Apex Classes & Triggers, Flows, Validation Rules, and Role-Based Access Control.
+# ♻️ RePlastix Innovations: Transforming Plastic Waste into Sustainable Solutions
 
-🚀 Features
-🔄 Automated stock level monitoring and restock request generation
+This project implements a customized **Salesforce CRM** solution for RePlastix Innovations – a pioneering organization in **plastic waste collection, recycling, and sustainable product distribution**. The objective is to streamline operations, improve inventory and order tracking, and automate restock notifications with real-time monitoring and Apex logic.
 
-📦 Order processing with real-time inventory updates
+---
 
-🔔 Email notifications for low stock alerts and approved restock actions
+## 🚀 Key Features
 
-📊 Role-based data visibility for Collection, Inventory, and Sales teams
+- **Custom Objects** to manage Plastic Waste, Recycling Centers, Recycled Products, Orders, and Restock Requests
+- **Flows & Automation** for low stock alerts, order tracking, and data updates
+- **Validation Rules** to enforce clean, consistent data
+- **Role-Based Access Control** for Inventory, Sales, and Recycling Teams
+- **Apex Triggers & Classes** for:
+  - Stock deduction on order placement
+  - Restock request creation and fulfillment
+  - Email notifications on restock approval
+- **Batch Jobs & Scheduled Flows** for inventory monitoring and request generation
 
-🧠 Smart data tracking of plastic waste collection, recycled product stock, and recycling center activities
+---
 
-🧰 Built With
-Salesforce CRM (Lightning Platform)
+## 📦 Technologies Used
 
-Custom Objects & Tabs
+- **Salesforce Platform**
+- **Apex (Object-Oriented Programming Language)**
+- **Record-Triggered & Scheduled Flows**
+- **Lightning App Builder**
+- **Validation Rules**
+- **Email Alerts (via Apex Messaging)**
+- **Developer Console for Code Implementation**
 
-Apex Triggers and Classes
+---
 
-Record-Triggered Flows & Scheduled Flows
+## 🏗️ Custom Objects Overview
 
-Validation Rules & Email Alerts
+| Object Name                                        | Purpose                                          |
+|---------------------------------------------------|--------------------------------------------------|
+| `Re_Plastic_Innovations_Plastic_Waste__c`         | Tracks collected plastic waste details          |
+| `Re_Plastic_Innovations_Recycling_Center__c`      | Manages assigned recycling centers              |
+| `Re_Plastic_Innovations_Recycled_Product__c`      | Stores recycled products and stock levels       |
+| `Re_Plastic_Innovations_Order__c`                 | Handles customer orders                         |
+| `Re_Plastic_Innovations_Restock_Request__c`       | Manages restock requests for low-stock products |
 
-📂 Core Custom Objects
-Plastic_Waste__c: Tracks collected plastic waste
+---
 
-Recycled_Product__c: Manages stock of recycled goods
+## 💻 Project Modules (Apex Components)
 
-Order__c: Handles customer orders
+1. **InventoryManager.cls**  
+   Handles stock reduction after order placement and stock updates after restock approval.
 
-Restock_Request__c: Automates stock replenishment
+2. **UpdateStockAfterOrder.trigger**  
+   Trigger on `Order__c` to process stock reduction.
 
-Recycling_Center__c: Centralizes center-level operations
+3. **UpdateStockAfterRestockApproval.trigger**  
+   Trigger on `Restock_Request__c` to approve restock and increase inventory.
 
-🛠 Sample Workflows
-Plastic waste collected → Recycled → Inventory updated → Order placed → Stock adjusted → Restock requested → Email sent
+4. **EmailNotificationHelper.cls**  
+   Sends email to warehouse when a restock is approved.
+
+5. **InventoryManagerTest.cls**  
+   Apex test class for 100% code coverage of business logic.
+
+---
+
+## 📸 Suggested Screenshots to Include
+
+- Custom App (Lightning App Builder)
+- Tabs for each Object (e.g., Waste, Orders, Restock)
+- Sample Records for:
+  - Plastic Waste entry
+  - Recycled Product with stock
+  - Order creation triggering stock deduction
+  - Restock Request auto-generated
+- Flow diagram (Scheduled Flow for Stock Monitoring)
+- Email (Mocked screenshot showing restock email)
+- Developer Console with Apex Class and Trigger
+
+---
+
+## 📈 Future Scope
+
+- Salesforce Mobile SDK App for warehouse/field team
+- Customer Community Portal for order placement and tracking
+- WhatsApp/SMS Integration for alerts
+- Einstein AI Recommendations for restock and sales patterns
+- Custom Reports & Dashboards for real-time insights
+
+---
+
+## 🧑‍💻 Developer
+
+**Name:** Mohammed Abdul Adam Akmal  
+**Email:** adamakmal_mohammedabdul@srmap.edu.in  
+**Tools:** Salesforce Dev Console, Flow Builder, VS Code (optional)
+
+---
+
+## 📝 License
+
+This project is for educational and demonstration purposes only.
